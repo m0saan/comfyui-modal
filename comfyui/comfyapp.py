@@ -6,6 +6,62 @@ from typing import Dict
 
 import modal
 import modal.experimental
+COMFY_DIR = "/root/comfy/ComfyUI"
+CIVITAI_API_TOKEN = "165de85d4ecf11f5ce04786082a06a94"
+# manual custom node install, if comfy-cli doesn't work
+def git_install_custom_node(repo_id: str, recursive: bool = False, install_reqs: bool = False):
+    custom_node = repo_id.split("/")[-1]
+    
+    command = f"git clone https://github.com/{repo_id}"
+
+    if recursive:
+        command += " --recursive"
+
+    command += f" {COMFY_DIR}/custom_nodes/{custom_node}"
+
+    if install_reqs:
+        command += f" && uv pip install --system --compile-bytecode -r {COMFY_DIR}/custom_nodes/{custom_node}/requirements.txt"
+
+    return command
+
+
+# download from civitai to cache and create symlink
+def civitai_download(local_dir: str, filename: str, url: str):
+    """Download from Civitai to cache directory and create symlink to ComfyUI models directory."""
+    import subprocess
+    from pathlib import Path
+    
+    cache_path = Path(f"/cache/models/{local_dir}") / filename
+    comfy_path = Path(f"{COMFY_DIR}/models/{local_dir}") / filename
+    
+    # Create cache directory if it doesn't exist
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Check if model already exists in cache
+    if cache_path.exists():
+        print(f"Model already exists in cache, skipping download: {cache_path}")
+    else:
+        # Download model using comfy-cli to cache
+        print(f"Downloading {filename} from Civitai to cache...")
+        download_cmd = (
+            f"comfy --skip-prompt model download --url '{url}' "
+            f"--relative-path '{cache_path.parent}' "
+            f"--filename '{filename}' "
+            f"--set-civitai-api-token {CIVITAI_API_TOKEN}"
+        )
+        subprocess.run(download_cmd, shell=True, check=True)
+        print(f"Successfully cached: {cache_path}")
+    
+    # Create ComfyUI directory if it doesn't exist
+    comfy_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create symlink from ComfyUI path to cache (if not already exists)
+    if not comfy_path.exists():
+        print(f"Creating symlink: {comfy_path} -> {cache_path}")
+        comfy_path.symlink_to(cache_path)
+    else:
+        print(f"Symlink already exists: {comfy_path}")
+
 
 
 image = (
@@ -15,8 +71,15 @@ image = (
     )
     .entrypoint([])
     .apt_install("git")
-    .pip_install("comfy-cli")
-    .run_commands("comfy --skip-prompt install --fast-deps --nvidia")
+    .run_commands("pip install --upgrade pip")
+    .pip_install("uv")
+    .run_commands("uv pip install --system --compile-bytecode huggingface_hub[hf_transfer]==0.28.1")
+    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
+    .run_commands("uv pip install --system --compile-bytecode comfy-cli==1.3.6")
+    .run_commands("comfy --skip-prompt install --nvidia")
+    .apt_install("libgl1-mesa-glx", "libglib2.0-0") # required for several custom nodes on Linux
+    .run_commands("pip install --upgrade comfy-cli")
+    .run_commands("comfy --version")
     .add_local_file(
         Path(__file__).parent / "video_upscale.json", "/root/video_upscale.json", copy=True
     )
@@ -30,8 +93,32 @@ image = (
         extra_options="--index-strategy unsafe-best-match",
         extra_index_url="https://download.pytorch.org/whl/cu128",
     )
+    .run_commands("comfy node install ComfyUI-WanVideoWrapper")
+    .run_commands("comfy node install rgthree-comfy")
+    .run_commands("comfy node install comfyui-florence2")
+    .run_commands("comfy node install comfyui-frame-interpolation")
+    .run_commands("comfy node install comfyui-segment-anything-2")
+    .run_commands("comfy node install comfyui_layerstyle")
+    .run_commands("cd /root/comfy/ComfyUI/custom_nodes && git clone https://github.com/un-seen/comfyui-tensorops")
+    .run_commands(git_install_custom_node("ssitu/ComfyUI_UltimateSDUpscale", recursive=True))
+    .run_commands(git_install_custom_node("kijai/ComfyUI-KJNodes", install_reqs=True, recursive=True))
+    .run_commands(git_install_custom_node("Kosinkadink/ComfyUI-VideoHelperSuite", install_reqs=True, recursive=True))
+    .run_commands(git_install_custom_node("Fannovel16/comfyui_controlnet_aux"))
+    .run_commands("python -m pip install -U scikit-image")
+    .run_commands("comfy node install comfyui-easy-use")
+    .run_commands("comfy node install basic_data_handling")
+    .run_commands("comfy node install comfyui_essentials")
+    .run_commands("comfy node install seedvr2_videoupscaler")
+    .run_commands(git_install_custom_node("ClownsharkBatwing/RES4LYF"))
+    .run_commands("comfy node install comfyui-propost@1.1.2")
+    .run_commands("comfy node install comfyui_face_parsing")
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
 )
+# comfy node install comfyui-easy-use
+# comfy node install basic_data_handling
+# comfy node install comfyui_essentials
+# comfy node install seedvr2_videoupscaler
+# https://github.com/ClownsharkBatwing/RES4LYF
 
 
 def hf_download():
@@ -39,33 +126,6 @@ def hf_download():
     from huggingface_hub import hf_hub_download
     import shutil
     
-    # git pull
-
-    print("Updating comfyUI...")
-    subprocess.run(
-        "cd /root/comfy/ComfyUI && git pull && pip install -r requirements.txt",
-        shell=True,
-        check=True
-    )
-    print("ComfyUI update complete")
-    
-    # Install custom nodes from workflow dependencies
-    print("Installing custom nodes from workflow...")
-    subprocess.run(
-        "comfy node install-deps --workflow=/root/video_upscale.json",
-        shell=True,
-        check=True
-    )
-    print("Custom nodes installation complete")
-
-    print("Updating custom nodes...")
-    subprocess.run(
-        "comfy node update all",
-        shell=True,
-        check=True
-    )
-    print("Custom nodes update complete")
-
     
     # Define models to download with their HuggingFace repo info and ComfyUI paths
     models_to_check = [
@@ -106,12 +166,69 @@ def hf_download():
             "cache_dir": "/cache/models/loras",
             "comfy_dir": "/root/comfy/ComfyUI/models/loras",
         },
-        # {
-        #     "repo_id": "Kijai/sam2-safetensors",
-        #     "filename": "sam2.1_hiera_base_plus.safetensors",
-        #     "cache_dir": "/cache/models/loras",
-        #     "comfy_dir": "/root/comfy/ComfyUI/models/loras",
-        # }
+        {
+            # https://huggingface.co/aidiffuser/Qwen-Image-Edit-2509/resolve/main/Qwen-Image-Edit-2509_fp8_e4m3fn.safetensors
+            "repo_id": "aidiffuser/Qwen-Image-Edit-2509",
+            "filename": "Qwen-Image-Edit-2509_fp8_e4m3fn.safetensors",
+            "cache_dir": "/cache/models/diffusion_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/diffusion_models",
+        },
+        {
+            # https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "filename": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+            "cache_dir": "/cache/models/clip",
+            "comfy_dir": "/root/comfy/ComfyUI/models/clip",
+        },
+        {
+            #https://huggingface.co/lightx2v/Qwen-Image-Lightning/resolve/main/Qwen-Image-Lightning-8steps-V2.0-bf16.safetensors
+            "repo_id": "lightx2v/Qwen-Image-Lightning",
+            "filename": "Qwen-Image-Lightning-8steps-V2.0-bf16.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            "repo_id": "RunDiffusion/Juggernaut-XL-v9",
+            "filename": "Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+            "cache_dir": "/cache/models/checkpoints",
+            "comfy_dir": "/root/comfy/ComfyUI/models/checkpoints",
+        },
+        {
+            "repo_id": "xinsir/controlnet-tile-sdxl-1.0",
+            "filename": "diffusion_pytorch_model.safetensors",
+            "cache_dir": "/cache/models/controlnet",
+            "comfy_dir": "/root/comfy/ComfyUI/models/controlnet",
+        },
+        {
+            "repo_id": "ByteDance/SDXL-Lightning",
+            "filename": "sdxl_lightning_8step_lora.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "skin_realism-248951.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "better_freckles_sdxl.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "RealVisXL_V5.0_fp16.safetensors",
+            "cache_dir": "/cache/models/checkpoints",
+            "comfy_dir": "/root/comfy/ComfyUI/models/checkpoints",
+        },
+        {
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "8xNMKDFaces160000G_v10.pt",
+            "cache_dir": "/cache/models/upscale",
+            "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        }
     ]
     
     for model in models_to_check:
@@ -172,8 +289,9 @@ app = modal.App(name="example-comfyapp", image=image)
 
 @app.function(
     max_containers=1,  # limit interactive session to 1 container
-    gpu="L40S",  # good starter GPU for inference
+    gpu="A100-40GB",  # good starter GPU for inference
     volumes={"/cache": vol},  # mounts our cached models
+    timeout=900,
 )
 @modal.concurrent(
     max_inputs=10
