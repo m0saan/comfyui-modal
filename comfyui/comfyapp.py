@@ -80,9 +80,7 @@ image = (
     .apt_install("libgl1-mesa-glx", "libglib2.0-0") # required for several custom nodes on Linux
     .run_commands("pip install --upgrade comfy-cli")
     .run_commands("comfy --version")
-    .add_local_file(
-        Path(__file__).parent / "video_upscale.json", "/root/video_upscale.json", copy=True
-    )
+    .add_local_file(Path(__file__).parent / "video_upscale.json", "/root/video_upscale.json", copy=True)
     .uv_pip_install(
         "accelerate",
         "huggingface-hub[hf-transfer]",
@@ -110,8 +108,13 @@ image = (
     .run_commands("comfy node install comfyui_essentials")
     .run_commands("comfy node install seedvr2_videoupscaler")
     .run_commands(git_install_custom_node("ClownsharkBatwing/RES4LYF"))
-    .run_commands("comfy node install comfyui-propost@1.1.2")
+    .run_commands("comfy node install comfyui-propost@1.1.3")
     .run_commands("comfy node install comfyui_face_parsing")
+    .run_commands("comfy node install comfyui_tinyterranodes")
+    .run_commands("comfy node install Comfyui-Resolution-Master")
+    .run_commands("pip install numpy==1.26.4")
+    .run_commands("pip install protobuf==4.25.5")
+    .run_commands("pip install mediapipe==0.10.14")
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
 )
 # comfy node install comfyui-easy-use
@@ -228,6 +231,34 @@ def hf_download():
             "filename": "8xNMKDFaces160000G_v10.pt",
             "cache_dir": "/cache/models/upscale",
             "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        },
+        # models/SEEDVR2
+        # https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_7b_fp16.safetensors
+        {
+            "repo_id": "numz/SeedVR2_comfyUI",
+            "filename": "ema_vae_fp16.safetensors",
+            "cache_dir": "/cache/models/vae",
+            "comfy_dir": "/root/comfy/ComfyUI/models/SEEDVR2",
+        },
+        {
+            "repo_id": "numz/SeedVR2_comfyUI",
+            "filename": "seedvr2_ema_7b_fp16.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/SEEDVR2",
+        },
+        {
+            # https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors
+            "repo_id": "Comfy-Org/Qwen-Image_ComfyUI",
+            "filename": "split_files/vae/qwen_image_vae.safetensors",
+            "cache_dir": "/cache/models/vae",
+            "comfy_dir": "/root/comfy/ComfyUI/models/vae",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/BestFaceSwap_QwenImageEditLora.safetensors
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "BestFaceSwap_QwenImageEditLora.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
         }
     ]
     
