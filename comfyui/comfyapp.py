@@ -259,6 +259,62 @@ def hf_download():
             "filename": "BestFaceSwap_QwenImageEditLora.safetensors",
             "cache_dir": "/cache/models/loras",
             "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/1xSkinContrastHighAlternativeSuperUltraCompact.pth
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "1xSkinContrastHighAlternativeSuperUltraCompact.pth",
+            "cache_dir": "/cache/models/upscale_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/ClearReality%20V1.pth
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "ClearRealityV1.pth",
+            "cache_dir": "/cache/models/upscale_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/DF2KJPEG.pth
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "DF2KJPEG.pth",
+            "cache_dir": "/cache/models/upscale_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/Higurashiv1compact270k.pth
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "Higurashiv1compact270k.pth",
+            "cache_dir": "/cache/models/upscale_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/RealplksrOTF.safetensors
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "RealplksrOTF.safetensors",
+            "cache_dir": "/cache/models/upscale_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/upscale_models",
+        },
+        {
+            # https://huggingface.co/alibaba-pai/Wan2.2-Fun-Reward-LoRAs/resolve/main/Wan2.2-Fun-A14B-InP-low-noise-HPS2.1.safetensors
+            "repo_id": "alibaba-pai/Wan2.2-Fun-Reward-LoRAs",
+            "filename": "Wan2.2-Fun-A14B-InP-low-noise-HPS2.1.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            # https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors
+            "repo_id": "Kijai/WanVideo_comfy",
+            "filename": "Lightx2v/lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        {
+            # https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/umt5-xxl-enc-bf16.safetensors
+            "repo_id": "Kijai/WanVideo_comfy",
+            "filename": "umt5-xxl-enc-bf16.safetensors",
+            "cache_dir": "/cache/models/clip",
+            "comfy_dir": "/root/comfy/ComfyUI/models/clip",
         }
     ]
     
