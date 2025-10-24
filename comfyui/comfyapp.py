@@ -75,10 +75,10 @@ image = (
     .pip_install("uv")
     .run_commands("uv pip install --system --compile-bytecode huggingface_hub[hf_transfer]==0.28.1")
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
-    .run_commands("uv pip install --system --compile-bytecode comfy-cli==1.3.6")
+    .run_commands("uv pip install --system --compile-bytecode comfy-cli")
+    .run_commands("pip install --upgrade comfy-cli")
     .run_commands("comfy --skip-prompt install --nvidia")
     .apt_install("libgl1-mesa-glx", "libglib2.0-0") # required for several custom nodes on Linux
-    .run_commands("pip install --upgrade comfy-cli")
     .run_commands("comfy --version")
     .add_local_file(Path(__file__).parent / "video_upscale.json", "/root/video_upscale.json", copy=True)
     .uv_pip_install(
@@ -105,7 +105,7 @@ image = (
     .run_commands("python -m pip install -U scikit-image")
     .run_commands("comfy node install comfyui-easy-use")
     .run_commands("comfy node install basic_data_handling")
-    .run_commands("comfy node install comfyui_essentials")
+    # .run_commands("comfy node install comfyui_essentials")
     .run_commands("comfy node install seedvr2_videoupscaler")
     .run_commands(git_install_custom_node("ClownsharkBatwing/RES4LYF"))
     .run_commands("comfy node install comfyui-propost@1.1.3")
@@ -115,14 +115,34 @@ image = (
     .run_commands("pip install numpy==1.26.4")
     .run_commands("pip install protobuf==4.25.5")
     .run_commands("pip install mediapipe==0.10.14")
+    .run_commands("comfy node install comfyui-custom-scripts")
+    .run_commands("comfy node install derfuu_comfyui_moddednodes")
+    .run_commands("comfy node install was-node-suite-comfyui")
+    .pip_install(
+        "packaging",
+        "wheel",
+        "ninja",
+    )
+    .run_commands("ln -s /usr/bin/g++ /usr/bin/clang++")
+    .env({
+        "LD_LIBRARY_PATH" : "/usr/local/cuda/targets/x86_64-linux/lib:$LD_LIBRARY_PATH "
+    })
+    # .run_commands("git clone https://github.com/thu-ml/SageAttention.git && cd SageAttention && export EXT_PARALLEL=4 NVCC_APPEND_FLAGS='--threads 8' MAX_JOBS=32 && python setup.py install", gpu="A100-40GB")
+    .run_commands("comfy node install comfyui-logicutils")
+    .run_commands("comfy node install comfyui-impact-pack")
+    .run_commands("comfy node install ComfyUI-Crystools")
+    .run_commands("comfy node install comfyui-ollama-describer")
+    .run_commands("comfy node install ComfyUI-GGUF")
+    .run_commands("comfy node install comfyui_fill-nodes")
+    .run_commands("comfy node install Compare_videos")
+    .run_commands(git_install_custom_node("Suzie1/ComfyUI_Comfyroll_CustomNodes", recursive=True))
+    .run_commands("comfy node install comfyui_essentials@1.1.0")
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})
-)
-# comfy node install comfyui-easy-use
-# comfy node install basic_data_handling
-# comfy node install comfyui_essentials
-# comfy node install seedvr2_videoupscaler
-# https://github.com/ClownsharkBatwing/RES4LYF
-
+    )
+#     git clone https://github.com/thu-ml/SageAttention.git
+# cd SageAttention 
+# export EXT_PARALLEL=4 NVCC_APPEND_FLAGS="--threads 8" MAX_JOBS=32 # parallel compiling (Optional)
+# python setup.py install  # or pip install -e .
 
 def hf_download():
     """Download required models to cache volume if they don't already exist, then symlink to ComfyUI paths."""
@@ -132,9 +152,10 @@ def hf_download():
     
     # Define models to download with their HuggingFace repo info and ComfyUI paths
     models_to_check = [
+        # https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
         {
-            "repo_id": "Wan-AI/Wan2.2-T2V-A14B",
-            "filename": "models_t5_umt5-xxl-enc-bf16.pth",
+            "repo_id": "Comfy-Org/Wan_2.1_ComfyUI_repackaged",
+            "filename": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
             "cache_dir": "/cache/models/clip",
             "comfy_dir": "/root/comfy/ComfyUI/models/clip",
         },
@@ -299,13 +320,56 @@ def hf_download():
             # https://huggingface.co/alibaba-pai/Wan2.2-Fun-Reward-LoRAs/resolve/main/Wan2.2-Fun-A14B-InP-low-noise-HPS2.1.safetensors
             "repo_id": "alibaba-pai/Wan2.2-Fun-Reward-LoRAs",
             "filename": "Wan2.2-Fun-A14B-InP-low-noise-HPS2.1.safetensors",
+        # Wan 2.2 ligh noise FP16:
+        # https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp16.safetensors
+        {
+            "repo_id": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+            "filename": "split_files/diffusion_models/wan2.2_t2v_high_noise_14B_fp16.safetensors",
+            "cache_dir": "/cache/models/diffusion_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/diffusion_models",
+        },
+        # Wan 2.2 low noise FP16:
+        # https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/blob/main/split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp16.safetensors
+        {
+            "repo_id": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+            "filename": "split_files/diffusion_models/wan2.2_t2v_low_noise_14B_fp16.safetensors",
+            "cache_dir": "/cache/models/diffusion_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/diffusion_models",
+        },
+        # Lightning LoRAs:
+        # https://huggingface.co/lightx2v/Wan2.2-Lightning/resolve/main/Wan2.2-T2V-A14B-4steps-lora-250928/high_noise_model.safetensors
+        {
+            "repo_id": "lightx2v/Wan2.2-Lightning",
+            "filename": "Wan2.2-T2V-A14B-4steps-lora-250928/high_noise_model.safetensors",
             "cache_dir": "/cache/models/loras",
             "comfy_dir": "/root/comfy/ComfyUI/models/loras",
         },
         {
-            # https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Lightx2v/lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors
+            # https://huggingface.co/lightx2v/Wan2.2-Lightning/resolve/main/Wan2.2-T2V-A14B-4steps-lora-250928/low_noise_model.safetensors
+            "repo_id": "lightx2v/Wan2.2-Lightning",
+            "filename": "Wan2.2-T2V-A14B-4steps-lora-250928/low_noise_model.safetensors",
+            "cache_dir": "/cache/models/loras",
+            "comfy_dir": "/root/comfy/ComfyUI/models/loras",
+        },
+        # Fun Vace modules:
+        # https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Fun/VACE/Wan2_2_Fun_VACE_module_A14B_HIGH_bf16.safetensors
+        {
             "repo_id": "Kijai/WanVideo_comfy",
-            "filename": "Lightx2v/lightx2v_T2V_14B_cfg_step_distill_v2_lora_rank64_bf16.safetensors",
+            "filename": "Fun/VACE/Wan2_2_Fun_VACE_module_A14B_HIGH_bf16.safetensors",
+            "cache_dir": "/cache/models/diffusion_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/diffusion_models",
+        },
+        # https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/Fun/VACE/Wan2_2_Fun_VACE_module_A14B_LOW_bf16.safetensors
+        {
+            "repo_id": "Kijai/WanVideo_comfy",
+            "filename": "Fun/VACE/Wan2_2_Fun_VACE_module_A14B_LOW_bf16.safetensors",
+            "cache_dir": "/cache/models/diffusion_models",
+            "comfy_dir": "/root/comfy/ComfyUI/models/diffusion_models",
+        },
+        {
+            # https://huggingface.co/labai-llc/skin-fix/resolve/main/face_swap_5500_qwen_image_edit_2509_v1.safetensors
+            "repo_id": "labai-llc/skin-fix",
+            "filename": "face_swap_5500_qwen_image_edit_2509_v1.safetensors",
             "cache_dir": "/cache/models/loras",
             "comfy_dir": "/root/comfy/ComfyUI/models/loras",
         },
@@ -315,7 +379,15 @@ def hf_download():
             "filename": "umt5-xxl-enc-bf16.safetensors",
             "cache_dir": "/cache/models/clip",
             "comfy_dir": "/root/comfy/ComfyUI/models/clip",
+        },
+        {
+            # https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/resolve/main/Qwen_Image_Edit-Q8_0.gguf
+            "repo_id": "QuantStack/Qwen-Image-Edit-GGUF",
+            "filename": "Qwen_Image_Edit-Q8_0.gguf",
+            "cache_dir": "/cache/models/unet",
+            "comfy_dir": "/root/comfy/ComfyUI/models/unet",
         }
+
     ]
     
     for model in models_to_check:
